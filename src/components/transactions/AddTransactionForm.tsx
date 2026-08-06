@@ -9,6 +9,8 @@ import { CategoryChip } from '../common/CategoryChip';
 import FinTrackedColors from '../../constants/Colors';
 import { TransactionType } from '../../types';
 import { Ionicons } from '@expo/vector-icons';
+import { ReceiptScannerModal } from '../ai/ReceiptScannerModal';
+import { ScannedReceiptResult } from '../../services/aiReceiptScanner';
 
 interface AddTransactionFormProps {
   onSuccess: () => void;
@@ -17,6 +19,7 @@ interface AddTransactionFormProps {
 export const AddTransactionForm: React.FC<AddTransactionFormProps> = ({ onSuccess }) => {
   const { categories, accounts, addTransaction } = useAppStore();
   const [selectedType, setSelectedType] = useState<TransactionType>('EXPENSE');
+  const [isScannerOpen, setIsScannerOpen] = useState(false);
 
   const defaultCategory = categories.find((c) => c.type === selectedType) || categories[0];
   const defaultAccount = accounts[0];
@@ -55,6 +58,14 @@ export const AddTransactionForm: React.FC<AddTransactionFormProps> = ({ onSucces
     }
   };
 
+  const handleReceiptScanned = (scanned: ScannedReceiptResult) => {
+    setValue('title', scanned.title);
+    setValue('amount', String(scanned.amount));
+    if (scanned.categoryId) {
+      setValue('categoryId', scanned.categoryId);
+    }
+  };
+
   const onSubmit = (data: TransactionSchemaType) => {
     const numericAmount = parseFloat(data.amount);
     const category = categories.find((c) => c.id === data.categoryId);
@@ -80,6 +91,13 @@ export const AddTransactionForm: React.FC<AddTransactionFormProps> = ({ onSucces
 
   return (
     <ScrollView style={styles.formContainer} showsVerticalScrollIndicator={false}>
+      {/* AI Receipt Vision Scanner Trigger */}
+      <Pressable onPress={() => setIsScannerOpen(true)} style={styles.aiScannerBtn}>
+        <Ionicons name="sparkles" size={18} color={FinTrackedColors.gold} />
+        <Text style={styles.aiScannerText}>Scan Paper Receipt / Bill with AI</Text>
+        <Ionicons name="camera" size={18} color={FinTrackedColors.gold} />
+      </Pressable>
+
       {/* 1. Transaction Type Segmented Switcher */}
       <View style={styles.segmentWrapper}>
         <SegmentedButtons
@@ -223,6 +241,13 @@ export const AddTransactionForm: React.FC<AddTransactionFormProps> = ({ onSucces
       >
         Save Transaction
       </Button>
+
+      {/* Receipt Scanner Modal */}
+      <ReceiptScannerModal
+        visible={isScannerOpen}
+        onClose={() => setIsScannerOpen(false)}
+        onReceiptScanned={handleReceiptScanned}
+      />
     </ScrollView>
   );
 };
@@ -232,6 +257,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
     paddingBottom: 40,
+  },
+  aiScannerBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: FinTrackedColors.gold + '1F',
+    borderRadius: 16,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderWidth: 1,
+    borderColor: FinTrackedColors.gold + '50',
+    marginBottom: 16,
+  },
+  aiScannerText: {
+    color: FinTrackedColors.gold,
+    fontSize: 13,
+    fontWeight: '700',
   },
   segmentWrapper: {
     marginBottom: 20,

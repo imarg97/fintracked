@@ -1,6 +1,6 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl, Pressable } from 'react-native';
-import { Text, Avatar, Surface } from 'react-native-paper';
+import { Text, Avatar, Surface, FAB } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -9,15 +9,18 @@ import { useAppStore } from '../../store/useAppStore';
 import { NetWorthCard } from '../../components/dashboard/NetWorthCard';
 import { MetricCard } from '../../components/common/MetricCard';
 import { RecentTransactionsCard } from '../../components/dashboard/RecentTransactionsCard';
+import { InsightsCard } from '../../components/ai/InsightsCard';
+import { generateFinancialInsights } from '../../services/aiInsights';
 import { formatRupee } from '../../utils/formatters';
 
 export default function HomeScreen() {
   const router = useRouter();
-  const { isPrivacyMode, togglePrivacyMode, userName, transactions, goals, getSummary } =
+  const { isPrivacyMode, togglePrivacyMode, userName, transactions, budgets, goals, getSummary } =
     useAppStore();
   const [refreshing, setRefreshing] = React.useState(false);
 
   const summary = getSummary();
+  const insights = generateFinancialInsights(summary, transactions, budgets, goals);
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
@@ -65,6 +68,27 @@ export default function HomeScreen() {
           isPrivacyMode={isPrivacyMode}
           onTogglePrivacy={togglePrivacyMode}
         />
+
+        {/* AI Financial Insights Cards */}
+        {insights.length > 0 && (
+          <View style={styles.insightsSection}>
+            <View style={styles.insightsTitleRow}>
+              <Ionicons name="sparkles" size={16} color={FinTrackedColors.gold} />
+              <Text style={styles.insightsTitleText}>AI FINANCIAL INSIGHTS</Text>
+            </View>
+            {insights.slice(0, 2).map((ins) => (
+              <InsightsCard
+                key={ins.id}
+                insight={ins}
+                onPressAction={() => {
+                  if (ins.actionText?.includes('Goal') || ins.actionText?.includes('Budget')) {
+                    router.push('/(tabs)/budgets');
+                  }
+                }}
+              />
+            ))}
+          </View>
+        )}
 
         {/* Net Worth Asset Breakdown Grid */}
         <Surface style={styles.assetBreakdownCard} elevation={0}>
@@ -115,15 +139,6 @@ export default function HomeScreen() {
           />
         </View>
 
-        {/* Excel Import Shortcut Banner */}
-        <Pressable onPress={() => router.push('/import-excel')}>
-          <Surface style={styles.excelBanner} elevation={0}>
-            <Ionicons name="cloud-upload-outline" size={20} color={FinTrackedColors.primary} />
-            <Text style={styles.excelBannerText}>Import your past transactions from spending.xlsx</Text>
-            <Ionicons name="chevron-forward" size={16} color={FinTrackedColors.textSecondary} />
-          </Surface>
-        </Pressable>
-
         {/* Financial Goals Quick Preview */}
         {goals.length > 0 && (
           <Surface style={styles.goalsPreviewCard} elevation={0}>
@@ -158,6 +173,15 @@ export default function HomeScreen() {
           onViewAll={handleSeeAll}
         />
       </ScrollView>
+
+      {/* Floating AI Assistant FAB */}
+      <FAB
+        icon={() => <Ionicons name="sparkles" size={20} color="#FFFFFF" />}
+        style={styles.chatFab}
+        onPress={() => router.push('/chat')}
+        label="Ask AI"
+        color="#FFFFFF"
+      />
     </SafeAreaView>
   );
 }
@@ -170,7 +194,7 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 20,
     paddingTop: 12,
-    paddingBottom: 30,
+    paddingBottom: 90,
   },
   headerBar: {
     flexDirection: 'row',
@@ -197,6 +221,21 @@ const styles = StyleSheet.create({
   avatarLabel: {
     color: FinTrackedColors.primary,
     fontWeight: '700',
+  },
+  insightsSection: {
+    marginBottom: 16,
+  },
+  insightsTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  insightsTitleText: {
+    color: FinTrackedColors.gold,
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginLeft: 6,
   },
   assetBreakdownCard: {
     backgroundColor: FinTrackedColors.surface,
@@ -244,24 +283,6 @@ const styles = StyleSheet.create({
   gridSpacer: {
     width: 10,
   },
-  excelBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: FinTrackedColors.primary + '1F',
-    borderRadius: 16,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: FinTrackedColors.primary + '40',
-    marginBottom: 20,
-  },
-  excelBannerText: {
-    color: FinTrackedColors.textPrimary,
-    fontSize: 12,
-    fontWeight: '600',
-    marginLeft: 10,
-    flex: 1,
-  },
   goalsPreviewCard: {
     backgroundColor: FinTrackedColors.surface,
     borderRadius: 20,
@@ -304,5 +325,12 @@ const styles = StyleSheet.create({
   goalPct: {
     fontWeight: '700',
     fontSize: 12,
+  },
+  chatFab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    backgroundColor: FinTrackedColors.secondary,
+    borderRadius: 28,
   },
 });
