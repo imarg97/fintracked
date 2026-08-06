@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, StyleSheet, ScrollView, Alert } from 'react-native';
 import { Text, Avatar, Surface, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,7 +11,8 @@ import { exportTransactionsToExcel, generatePDFReport } from '../../services/exp
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userName, accounts, transactions, isPrivacyMode, getSummary } = useAppStore();
+  const { userName, accounts, transactions, isPrivacyMode, getSummary, clearAllTransactions, resetAllDataToBlank } =
+    useAppStore();
 
   const summary = getSummary();
 
@@ -21,6 +22,11 @@ export default function ProfileScreen() {
 
   const handleExportPDF = async () => {
     await generatePDFReport(userName, summary, transactions);
+  };
+
+  const handleClearSampleData = () => {
+    clearAllTransactions();
+    alert('All sample transactions have been cleared! You can now manually add your real transactions or import spending.xlsx.');
   };
 
   return (
@@ -82,6 +88,16 @@ export default function ProfileScreen() {
           >
             Export All to Excel (.xlsx)
           </Button>
+
+          <Button
+            mode="text"
+            onPress={handleClearSampleData}
+            icon={() => <Ionicons name="trash-bin-outline" size={18} color={FinTrackedColors.error} />}
+            style={styles.clearBtn}
+            labelStyle={styles.clearBtnLabel}
+          >
+            Clear Sample Data & Start Fresh
+          </Button>
         </Surface>
 
         {/* Bank & Credit Accounts Breakdown */}
@@ -128,7 +144,7 @@ export default function ProfileScreen() {
 
           <View style={[styles.settingRow, styles.borderTop]}>
             <Ionicons name="cloud-done-outline" size={20} color={FinTrackedColors.primary} />
-            <Text style={styles.settingLabel}>Supabase Sync</Text>
+            <Text style={styles.settingLabel}>Local & Supabase Sync</Text>
             <Text style={styles.settingStatus}>Active</Text>
           </View>
         </Surface>
@@ -226,6 +242,7 @@ const styles = StyleSheet.create({
     borderColor: FinTrackedColors.primary,
     borderRadius: 14,
     borderWidth: 1,
+    marginBottom: 10,
   },
   btnContent: {
     height: 46,
@@ -239,6 +256,14 @@ const styles = StyleSheet.create({
     color: FinTrackedColors.primary,
     fontWeight: '700',
     fontSize: 13,
+  },
+  clearBtn: {
+    marginTop: 4,
+  },
+  clearBtnLabel: {
+    color: FinTrackedColors.error,
+    fontSize: 12,
+    fontWeight: '700',
   },
   accountsCard: {
     backgroundColor: FinTrackedColors.surface,
