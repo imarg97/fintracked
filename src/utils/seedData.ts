@@ -1,4 +1,4 @@
-import { Category, Account, Transaction } from '../types';
+import { Category, Account, Transaction, Budget, Goal, GoldHolding, InvestmentPortfolio } from '../types';
 import { FinTrackedColors } from '../theme/theme';
 
 export const DEFAULT_ACCOUNTS: Account[] = [
@@ -95,3 +95,84 @@ export const INITIAL_TRANSACTIONS: Transaction[] = [
     iconName: 'car-outline',
   },
 ];
+
+// MILESTONE 3 SEED DATA
+
+export const DEFAULT_BUDGETS: Budget[] = [
+  {
+    id: 'bgt-food',
+    categoryId: 'cat-food',
+    categoryName: 'Food & Dining',
+    monthlyLimit: 15000,
+    icon: 'fast-food-outline',
+    color: '#F97316',
+  },
+  {
+    id: 'bgt-fuel',
+    categoryId: 'cat-fuel',
+    categoryName: 'Fuel & Transport',
+    monthlyLimit: 6000,
+    icon: 'car-outline',
+    color: '#EF4444',
+  },
+  {
+    id: 'bgt-tech',
+    categoryId: 'cat-tech',
+    categoryName: 'Tech & Gadgets',
+    monthlyLimit: 30000,
+    icon: 'laptop-outline',
+    color: '#3B82F6',
+  },
+  {
+    id: 'bgt-subs',
+    categoryId: 'cat-subs',
+    categoryName: 'Subscriptions & OTT',
+    monthlyLimit: 3000,
+    icon: 'play-circle-outline',
+    color: '#10B981',
+  },
+];
+
+export const DEFAULT_GOALS: Goal[] = [
+  {
+    id: 'goal-emergency',
+    title: '6-Month Emergency Fund',
+    targetAmount: 500000,
+    currentAmount: 320000,
+    targetDate: 'Dec 2026',
+    icon: 'shield-checkmark-outline',
+    color: '#10B981',
+  },
+  {
+    id: 'goal-car',
+    title: 'New Electric SUV Downpayment',
+    targetAmount: 400000,
+    currentAmount: 185000,
+    targetDate: 'Mar 2027',
+    icon: 'car-sport-outline',
+    color: '#3B82F6',
+  },
+  {
+    id: 'goal-travel',
+    title: 'Japan Autumn Trip 2027',
+    targetAmount: 250000,
+    currentAmount: 90000,
+    targetDate: 'Nov 2027',
+    icon: 'airplane-outline',
+    color: '#EC4899',
+  },
+];
+
+export const DEFAULT_GOLD_HOLDING: GoldHolding = {
+  grams: 50,
+  ratePerGram: 7250, // INR per gram 24K
+  lastUpdated: 'Today',
+};
+
+export const DEFAULT_INVESTMENT_PORTFOLIO: InvestmentPortfolio = {
+  investedAmount: 350000,
+  currentValue: 435600,
+  mutualFundsValue: 285600,
+  stocksValue: 150000,
+  licValue: 0,
+};

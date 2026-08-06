@@ -50,3 +50,46 @@ export interface DashboardSummary {
   savingsRate: number;
   monthlySavings: number;
 }
+
+// MILESTONE 3 TYPES
+
+export interface Budget {
+  id: string;
+  categoryId: string;
+  categoryName: string;
+  monthlyLimit: number;
+  icon: string;
+  color: string;
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  targetAmount: number;
+  currentAmount: number;
+  targetDate: string;
+  icon: string;
+  color: string;
+}
+
+export interface GoldHolding {
+  grams: number;
+  ratePerGram: number; // e.g. 7250 INR/gram
+  lastUpdated: string;
+}
+
+export interface InvestmentPortfolio {
+  investedAmount: number;
+  currentValue: number;
+  mutualFundsValue: number;
+  stocksValue: number;
+  licValue: number;
+}
+
+export interface ExcelImportResult {
+  success: boolean;
+  totalParsed: number;
+  importedCount: number;
+  ignoredCount: number;
+  errors: string[];
+}

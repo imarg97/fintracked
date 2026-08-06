@@ -1,6 +1,23 @@
 import { create } from 'zustand';
-import { Transaction, Account, Category, TransactionType } from '../types';
-import { DEFAULT_ACCOUNTS, DEFAULT_CATEGORIES, INITIAL_TRANSACTIONS } from '../utils/seedData';
+import {
+  Transaction,
+  Account,
+  Category,
+  TransactionType,
+  Budget,
+  Goal,
+  GoldHolding,
+  InvestmentPortfolio,
+} from '../types';
+import {
+  DEFAULT_ACCOUNTS,
+  DEFAULT_CATEGORIES,
+  INITIAL_TRANSACTIONS,
+  DEFAULT_BUDGETS,
+  DEFAULT_GOALS,
+  DEFAULT_GOLD_HOLDING,
+  DEFAULT_INVESTMENT_PORTFOLIO,
+} from '../utils/seedData';
 import { calculateSavingsRate } from '../utils/formatters';
 
 interface NewTransactionInput {
@@ -23,15 +40,22 @@ interface AppState {
   setUserName: (name: string) => void;
   togglePrivacyMode: () => void;
 
-  // Financial Domain Collections
+  // Collections
   accounts: Account[];
   categories: Category[];
   transactions: Transaction[];
+  budgets: Budget[];
+  goals: Goal[];
+  goldHolding: GoldHolding;
+  investmentPortfolio: InvestmentPortfolio;
 
   // Actions
   addTransaction: (input: NewTransactionInput) => void;
+  importExcelTransactions: (importedTxs: Transaction[]) => void;
   deleteTransaction: (id: string) => void;
   addCategory: (category: Category) => void;
+  updateGoalAmount: (goalId: string, deltaAmount: number) => void;
+  updateGoldHolding: (grams: number, ratePerGram: number) => void;
 
   // Computed Summaries
   getSummary: () => {
@@ -40,6 +64,10 @@ interface AppState {
     monthlyExpenses: number;
     savingsRate: number;
     monthlySavings: number;
+    liquidCash: number;
+    investmentsValuation: number;
+    goldValuation: number;
+    totalLiabilities: number;
   };
 }
 
@@ -52,6 +80,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   accounts: DEFAULT_ACCOUNTS,
   categories: DEFAULT_CATEGORIES,
   transactions: INITIAL_TRANSACTIONS,
+  budgets: DEFAULT_BUDGETS,
+  goals: DEFAULT_GOALS,
+  goldHolding: DEFAULT_GOLD_HOLDING,
+  investmentPortfolio: DEFAULT_INVESTMENT_PORTFOLIO,
 
   addTransaction: (input: NewTransactionInput) => {
     const newTx: Transaction = {
@@ -69,7 +101,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     };
 
     set((state) => {
-      // Update account balance
       const updatedAccounts = state.accounts.map((acc) => {
         if (acc.id === input.accountId) {
           const balanceChange = input.type === 'INCOME' ? input.amount : -input.amount;
@@ -85,12 +116,37 @@ export const useAppStore = create<AppState>((set, get) => ({
     });
   },
 
+  importExcelTransactions: (importedTxs: Transaction[]) => {
+    set((state) => {
+      // Create any missing category or account on the fly
+      const existingCatNames = new Set(state.categories.map((c) => c.name.toLowerCase()));
+      const newCategories = [...state.categories];
+
+      importedTxs.forEach((tx) => {
+        if (!existingCatNames.has(tx.category.toLowerCase())) {
+          existingCatNames.add(tx.category.toLowerCase());
+          newCategories.push({
+            id: tx.categoryId,
+            name: tx.category,
+            type: tx.type,
+            icon: tx.iconName,
+            color: '#6366F1',
+          });
+        }
+      });
+
+      return {
+        transactions: [...importedTxs, ...state.transactions],
+        categories: newCategories,
+      };
+    });
+  },
+
   deleteTransaction: (id: string) => {
     set((state) => {
       const targetTx = state.transactions.find((t) => t.id === id);
       if (!targetTx) return state;
 
-      // Revert account balance
       const updatedAccounts = state.accounts.map((acc) => {
         if (acc.id === targetTx.accountId) {
           const balanceRevert = targetTx.type === 'INCOME' ? -targetTx.amount : targetTx.amount;
@@ -110,18 +166,52 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((state) => ({ categories: [...state.categories, category] }));
   },
 
+  updateGoalAmount: (goalId: string, deltaAmount: number) => {
+    set((state) => ({
+      goals: state.goals.map((g) =>
+        g.id === goalId
+          ? { ...g, currentAmount: Math.min(g.targetAmount, g.currentAmount + deltaAmount) }
+          : g
+      ),
+    }));
+  },
+
+  updateGoldHolding: (grams: number, ratePerGram: number) => {
+    set({
+      goldHolding: {
+        grams,
+        ratePerGram,
+        lastUpdated: 'Just now',
+      },
+    });
+  },
+
   getSummary: () => {
-    const { accounts, transactions } = get();
+    const { accounts, transactions, goldHolding, investmentPortfolio } = get();
 
-    // Total Net Worth = Sum of all account balances
-    const netWorth = accounts.reduce((acc, a) => acc + a.balance, 0);
+    // Liquid Cash = Sum of BANK & CASH accounts where balance > 0
+    const liquidCash = accounts
+      .filter((a) => a.type === 'BANK' || a.type === 'CASH')
+      .reduce((sum, a) => sum + Math.max(0, a.balance), 0);
 
-    // Monthly Income = Sum of all INCOME transactions
+    // Total Liabilities = Sum of CREDIT_CARD and negative balances
+    const totalLiabilities = accounts.reduce((sum, a) => {
+      if (a.type === 'CREDIT_CARD' || a.balance < 0) {
+        return sum + Math.abs(a.balance);
+      }
+      return sum;
+    }, 0);
+
+    const goldValuation = goldHolding.grams * goldHolding.ratePerGram;
+    const investmentsValuation = investmentPortfolio.currentValue;
+
+    // Total Net Worth = Cash + Investments + Gold - Liabilities
+    const netWorth = liquidCash + investmentsValuation + goldValuation - totalLiabilities;
+
     const monthlyIncome = transactions
       .filter((t) => t.type === 'INCOME')
       .reduce((acc, t) => acc + t.amount, 0);
 
-    // Monthly Expenses = Sum of all EXPENSE transactions
     const monthlyExpenses = transactions
       .filter((t) => t.type === 'EXPENSE')
       .reduce((acc, t) => acc + t.amount, 0);
@@ -135,6 +225,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       monthlyExpenses,
       savingsRate,
       monthlySavings,
+      liquidCash,
+      investmentsValuation,
+      goldValuation,
+      totalLiabilities,
     };
   },
 }));
