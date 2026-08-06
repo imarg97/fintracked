@@ -13,9 +13,11 @@
       "backgroundColor": "#0B0E14"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.im_arg.fintracked"
     },
     "android": {
+      "package": "com.im_arg.fintracked",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0B0E14"
@@ -26,8 +28,7 @@
       "bundler": "metro"
     },
     "plugins": [
-      "expo-router",
-      "expo-secure-store"
+      "expo-router"
     ]
   }
 }
