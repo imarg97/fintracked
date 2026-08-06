@@ -47,9 +47,20 @@ export default function ProfileScreen() {
           </View>
         </Surface>
 
-        {/* Export & Data Actions */}
-        <Text style={styles.sectionHeader}>Data Export & Statements</Text>
+        {/* Data Import & Export Actions */}
+        <Text style={styles.sectionHeader}>Data Management & Reports</Text>
         <Surface style={styles.exportCard} elevation={0}>
+          <Button
+            mode="contained"
+            onPress={() => router.push('/import-excel')}
+            icon={() => <Ionicons name="document-attach-outline" size={18} color="#FFFFFF" />}
+            style={styles.importBtn}
+            contentStyle={styles.btnContent}
+            labelStyle={styles.btnLabel}
+          >
+            Import Spending.xlsx Spreadsheet
+          </Button>
+
           <Button
             mode="contained"
             onPress={handleExportPDF}
@@ -58,7 +69,7 @@ export default function ProfileScreen() {
             contentStyle={styles.btnContent}
             labelStyle={styles.btnLabel}
           >
-            Download PDF Statement
+            Download PDF Monthly Statement
           </Button>
 
           <Button
@@ -200,6 +211,11 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: FinTrackedColors.surfaceBorder,
     marginBottom: 20,
+  },
+  importBtn: {
+    backgroundColor: FinTrackedColors.secondary,
+    borderRadius: 14,
+    marginBottom: 10,
   },
   pdfBtn: {
     backgroundColor: FinTrackedColors.primary,
