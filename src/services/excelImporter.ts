@@ -1,33 +1,35 @@
 import * as XLSX from 'xlsx';
 import { Transaction, TransactionType } from '../types';
 
-export interface RawExcelRow {
-  Date?: string | number;
-  date?: string | number;
-  DATE?: string | number;
-  Title?: string;
-  title?: string;
-  Description?: string;
-  description?: string;
-  Amount?: number | string;
-  amount?: number | string;
-  Category?: string;
-  category?: string;
-  Type?: string;
-  type?: string;
-  Account?: string;
-  account?: string;
-  [key: string]: any;
-}
-
 export interface ParsedTransactionResult {
   transactions: Transaction[];
   errors: string[];
 }
 
 /**
- * Parses binary or base64 data from an uploaded Excel (.xlsx, .csv) spreadsheet.
- * Auto-detects standard column headers like Date, Description, Amount, Category, Type, and Account.
+ * Formats an Excel date value (string or Excel serial number) to readable date string.
+ */
+const formatExcelDate = (val: any): string => {
+  if (!val) return 'Past Entry';
+
+  if (typeof val === 'number') {
+    try {
+      const dateObj = XLSX.SSF.parse_date_code(val);
+      if (dateObj) {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        return `${String(dateObj.d).padStart(2, '0')} ${months[dateObj.m - 1]} ${dateObj.y}`;
+      }
+    } catch {
+      /* fallback */
+    }
+  }
+
+  return String(val).trim();
+};
+
+/**
+ * Intelligent, fuzzy column matcher for Excel spreadsheets.
+ * Finds Amount, Title/Description, Category, Account, and Date regardless of exact column casing or naming.
  */
 export const parseExcelSpreadsheet = (
   base64OrBinaryData: string | ArrayBuffer
@@ -36,68 +38,156 @@ export const parseExcelSpreadsheet = (
   const transactions: Transaction[] = [];
 
   try {
-    const workbook = XLSX.read(base64OrBinaryData, { type: 'base64' });
+    const workbook = XLSX.read(base64OrBinaryData, { type: 'base64', cellDates: true });
     const firstSheetName = workbook.SheetNames[0];
     const worksheet = workbook.Sheets[firstSheetName];
 
-    const rawRows: RawExcelRow[] = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+    // Convert sheet to array of objects with raw headers
+    const rawRows: Record<string, any>[] = XLSX.utils.sheet_to_json(worksheet, {
+      defval: '',
+      blankrows: false,
+    });
 
     if (!rawRows || rawRows.length === 0) {
-      return { transactions: [], errors: ['Excel file appears to be empty.'] };
+      return { transactions: [], errors: ['The selected Excel file contains no data rows.'] };
     }
 
+    // Inspect first row keys to determine column mapping
+    const sampleRow = rawRows[0];
+    const keys = Object.keys(sampleRow);
+
+    // Fuzzy Key Matchers
+    const findMatchingKey = (possibleNames: string[]): string | undefined => {
+      return keys.find((key) => {
+        const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, '');
+        return possibleNames.some((p) => {
+          const normalizedP = p.toLowerCase().replace(/[^a-z0-9]/g, '');
+          return normalizedKey === normalizedP || normalizedKey.includes(normalizedP);
+        });
+      });
+    };
+
+    const amountKey = findMatchingKey([
+      'amount',
+      'amt',
+      'price',
+      'cost',
+      'spent',
+      'expense',
+      'income',
+      'debit',
+      'credit',
+      'val',
+      'value',
+      'rupees',
+      'rs',
+      'inr',
+      'paid',
+      'out',
+      'in',
+    ]);
+
+    const titleKey = findMatchingKey([
+      'title',
+      'description',
+      'particulars',
+      'details',
+      'remarks',
+      'remark',
+      'name',
+      'item',
+      'note',
+      'notes',
+      'merchant',
+      'vendor',
+      'narrative',
+      'payee',
+      'purpose',
+    ]);
+
+    const categoryKey = findMatchingKey(['category', 'cat', 'type', 'group', 'tag', 'classification']);
+    const accountKey = findMatchingKey(['account', 'bank', 'source', 'wallet', 'mode', 'card']);
+    const dateKey = findMatchingKey(['date', 'time', 'txndate', 'created', 'day']);
+
     rawRows.forEach((row, index) => {
-      const rowNum = index + 2; // Accounting for 1-indexed Excel header row
+      const rowNum = index + 2;
 
-      // 1. Resolve Title / Description
-      const title =
-        row.Title ||
-        row.title ||
-        row.Description ||
-        row.description ||
-        row['Particulars'] ||
-        row['Transaction Details'] ||
-        `Imported Record #${index + 1}`;
+      // 1. Extract Amount
+      let rawAmountVal = amountKey ? row[amountKey] : undefined;
 
-      // 2. Resolve Amount
-      const rawAmount = row.Amount || row.amount || row['Debit'] || row['Credit'] || row['VALUE'];
-      const parsedAmount = Math.abs(parseFloat(String(rawAmount).replace(/[^0-9.-]+/g, '')));
+      // Fallback: search row values for first valid numeric field if key was not found
+      if (rawAmountVal === undefined || rawAmountVal === '') {
+        for (const k of keys) {
+          const val = row[k];
+          if (typeof val === 'number' && val !== 0) {
+            rawAmountVal = val;
+            break;
+          } else if (typeof val === 'string' && /^-?\d+(\.\d+)?$/.test(val.trim())) {
+            rawAmountVal = val;
+            break;
+          }
+        }
+      }
+
+      const cleanAmountStr = String(rawAmountVal || '')
+        .replace(/[^0-9.-]+/g, '')
+        .trim();
+      const parsedAmount = Math.abs(parseFloat(cleanAmountStr));
 
       if (isNaN(parsedAmount) || parsedAmount === 0) {
-        errors.push(`Row ${rowNum}: Invalid or zero amount (${rawAmount})`);
+        errors.push(`Row ${rowNum}: Could not find a valid numeric amount. Available columns: [${keys.join(', ')}]`);
         return;
       }
 
-      // 3. Resolve Transaction Type (INCOME / EXPENSE)
-      let type: TransactionType = 'EXPENSE';
-      const rawType = String(row.Type || row.type || '').toUpperCase();
+      // 2. Extract Title
+      let title = titleKey ? String(row[titleKey]).trim() : '';
+      if (!title) {
+        // Fallback to first non-numeric text column
+        for (const k of keys) {
+          if (k !== amountKey && row[k] && typeof row[k] === 'string' && row[k].trim().length > 1) {
+            title = row[k].trim();
+            break;
+          }
+        }
+      }
+      if (!title) {
+        title = `Imported Expense #${index + 1}`;
+      }
 
-      if (rawType.includes('INC') || rawType.includes('CREDIT') || rawType.includes('EARNING')) {
-        type = 'INCOME';
-      } else if (row['Credit'] && parseFloat(String(row['Credit'])) > 0) {
+      // 3. Determine Type (INCOME vs EXPENSE)
+      let type: TransactionType = 'EXPENSE';
+      const typeVal = String(row['type'] || row['Type'] || row['category'] || row['Category'] || '').toUpperCase();
+
+      if (
+        typeVal.includes('INC') ||
+        typeVal.includes('CREDIT') ||
+        typeVal.includes('SALARY') ||
+        typeVal.includes('EARN') ||
+        (amountKey && amountKey.toLowerCase().includes('credit'))
+      ) {
         type = 'INCOME';
       }
 
-      // 4. Resolve Category & Account
-      const categoryName = String(row.Category || row.category || (type === 'INCOME' ? 'Income' : 'General Expense'));
-      const accountName = String(row.Account || row.account || row['Bank'] || 'Imported Account');
-      const dateStr = String(row.Date || row.date || row.DATE || 'Past Entry');
+      // 4. Extract Category & Account
+      const categoryName = categoryKey && row[categoryKey] ? String(row[categoryKey]).trim() : (type === 'INCOME' ? 'Income' : 'General Expense');
+      const accountName = accountKey && row[accountKey] ? String(row[accountKey]).trim() : 'Primary Bank';
+      const dateStr = dateKey ? formatExcelDate(row[dateKey]) : 'Past Entry';
 
       transactions.push({
         id: `excel-tx-${Date.now()}-${index}`,
-        title: String(title).trim(),
+        title,
         amount: parsedAmount,
         type,
-        category: categoryName.trim(),
+        category: categoryName,
         categoryId: `cat-imported-${categoryName.toLowerCase().replace(/\s+/g, '-')}`,
-        accountName: accountName.trim(),
+        accountName,
         accountId: `acc-imported-${accountName.toLowerCase().replace(/\s+/g, '-')}`,
         iconName: type === 'INCOME' ? 'cash-outline' : 'receipt-outline',
         date: dateStr,
       });
     });
   } catch (err: any) {
-    errors.push(`Failed to parse Excel file: ${err.message || 'Corrupted file'}`);
+    errors.push(`Failed to read spreadsheet file: ${err.message || 'Unknown format'}`);
   }
 
   return { transactions, errors };

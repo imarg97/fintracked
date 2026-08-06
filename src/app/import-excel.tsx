@@ -25,12 +25,14 @@ export default function ImportExcelScreen() {
       setIsLoading(true);
       setSuccessMessage(null);
       setErrors([]);
+      setParsedItems([]);
 
       const result = await DocumentPicker.getDocumentAsync({
         type: [
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'application/vnd.ms-excel',
           'text/csv',
+          '*/*',
         ],
         copyToCacheDirectory: true,
       });
@@ -43,13 +45,14 @@ export default function ImportExcelScreen() {
       const asset = result.assets[0];
       setFileName(asset.name);
 
-      // Read file content
+      // Read file content as base64
       const response = await fetch(asset.uri);
       const blob = await response.blob();
 
       const reader = new FileReader();
       reader.onload = () => {
-        const base64Data = (reader.result as string).split(',')[1] || (reader.result as string);
+        const rawResult = reader.result as string;
+        const base64Data = rawResult.includes(',') ? rawResult.split(',')[1] : rawResult;
         const { transactions, errors: parseErrors } = parseExcelSpreadsheet(base64Data);
 
         setParsedItems(transactions);
@@ -57,7 +60,7 @@ export default function ImportExcelScreen() {
         setIsLoading(false);
       };
       reader.onerror = () => {
-        setErrors(['Failed to read selected Excel file']);
+        setErrors(['Failed to read selected Excel file from system.']);
         setIsLoading(false);
       };
       reader.readAsDataURL(blob);
@@ -102,7 +105,7 @@ export default function ImportExcelScreen() {
           </Text>
 
           <Text style={styles.uploadSub}>
-            Import your historical lifetime earnings and spending. Column headers supported: Date, Title, Amount, Category, Account.
+            Import your historical lifetime earnings and spending. Column headers supported: Date, Title / Description, Amount / Spent / Cost, Category, Account.
           </Text>
 
           <Button
@@ -128,11 +131,15 @@ export default function ImportExcelScreen() {
         {/* Parsing Errors Banner */}
         {errors.length > 0 && (
           <View style={styles.errorBanner}>
-            {errors.map((err, i) => (
+            <Text style={styles.errorTitle}>Column Mapping Note ({errors.length} rows affected):</Text>
+            {errors.slice(0, 3).map((err, i) => (
               <Text key={i} style={styles.errorText}>
                 • {err}
               </Text>
             ))}
+            {errors.length > 3 && (
+              <Text style={styles.errorText}>...and {errors.length - 3} other rows</Text>
+            )}
           </View>
         )}
 
@@ -141,7 +148,7 @@ export default function ImportExcelScreen() {
           <View style={styles.previewSection}>
             <View style={styles.previewHeader}>
               <Text variant="titleMedium" style={styles.previewTitle}>
-                Parsed Preview ({parsedItems.length} Records)
+                Parsed Preview ({parsedItems.length} Transactions Ready)
               </Text>
             </View>
 
@@ -275,9 +282,15 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     marginBottom: 16,
   },
+  errorTitle: {
+    color: FinTrackedColors.error,
+    fontWeight: '700',
+    fontSize: 12,
+    marginBottom: 4,
+  },
   errorText: {
     color: FinTrackedColors.error,
-    fontSize: 12,
+    fontSize: 11,
     marginBottom: 2,
   },
   previewSection: {
