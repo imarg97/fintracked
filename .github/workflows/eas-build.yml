@@ -1,0 +1,31 @@
+name: FinTracked Automated Build & OTA Update CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  update-and-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🏗️ Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 🟢 Setup Node.js Environment
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: 📦 Install Project Dependencies
+        run: npm ci
+
+      - name: 🚀 Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: 📲 Publish Over-The-Air (OTA) Update to Android Phone
+        run: npx eas-cli update --auto --non-interactive
