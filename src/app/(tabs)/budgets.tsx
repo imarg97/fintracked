@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { Text, SegmentedButtons } from 'react-native-paper';
+import { Text, SegmentedButtons, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import FinTrackedColors from '../../constants/Colors';
 import { useAppStore } from '../../store/useAppStore';
 import { BudgetCard } from '../../components/budgets/BudgetCard';
 import { GoalCard } from '../../components/budgets/GoalCard';
 import { GoldTrackerCard } from '../../components/investments/GoldTrackerCard';
+import { AddGoalModal } from '../../components/budgets/AddGoalModal';
+import { AddBudgetModal } from '../../components/budgets/AddBudgetModal';
 import { formatRupee } from '../../utils/formatters';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -19,11 +21,17 @@ export default function BudgetsScreen() {
     transactions,
     isPrivacyMode,
     updateGoalAmount,
+    addGoal,
+    deleteGoal,
+    addBudget,
+    deleteBudget,
+    clearAllGoalsAndBudgets,
   } = useAppStore();
 
   const [activeTab, setActiveTab] = useState<'BUDGETS' | 'GOALS' | 'ASSETS'>('BUDGETS');
+  const [isGoalModalOpen, setIsGoalModalOpen] = useState(false);
+  const [isBudgetModalOpen, setIsBudgetModalOpen] = useState(false);
 
-  // Compute monthly spent per category
   const getCategorySpent = (categoryId: string) => {
     return transactions
       .filter((t) => t.categoryId === categoryId && t.type === 'EXPENSE')
@@ -31,7 +39,6 @@ export default function BudgetsScreen() {
   };
 
   const handleTopUpGoal = (goalId: string) => {
-    // Add ₹10,000 top up to goal
     updateGoalAmount(goalId, 10000);
   };
 
@@ -40,8 +47,11 @@ export default function BudgetsScreen() {
       {/* Page Title */}
       <View style={styles.header}>
         <Text variant="headlineSmall" style={styles.pageTitle}>
-          Budgets & Assets
+          Budgets & Goals
         </Text>
+        <Pressable onPress={clearAllGoalsAndBudgets} style={styles.clearHeaderBtn} hitSlop={12}>
+          <Text style={styles.clearHeaderBtnText}>Clear All</Text>
+        </Pressable>
       </View>
 
       {/* Segment Switcher */}
@@ -65,17 +75,39 @@ export default function BudgetsScreen() {
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Category Spending Caps
               </Text>
-              <Text style={styles.sectionBadge}>{budgets.length} Active</Text>
+              <Button
+                mode="text"
+                onPress={() => setIsBudgetModalOpen(true)}
+                icon={() => <Ionicons name="add" size={18} color={FinTrackedColors.primary} />}
+                labelStyle={styles.addBtnLabel}
+              >
+                Add Budget
+              </Button>
             </View>
 
-            {budgets.map((b) => (
-              <BudgetCard
-                key={b.id}
-                budget={b}
-                spentAmount={getCategorySpent(b.categoryId)}
-                isPrivacyMode={isPrivacyMode}
-              />
-            ))}
+            {budgets.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="pie-chart-outline" size={44} color={FinTrackedColors.textMuted} />
+                <Text style={styles.emptyText}>No active budget caps. Tap "+ Add Budget" above to set one!</Text>
+              </View>
+            ) : (
+              budgets.map((b) => (
+                <View key={b.id} style={styles.cardWrapper}>
+                  <BudgetCard
+                    budget={b}
+                    spentAmount={getCategorySpent(b.categoryId)}
+                    isPrivacyMode={isPrivacyMode}
+                  />
+                  <Pressable
+                    onPress={() => deleteBudget(b.id)}
+                    style={styles.deleteBadge}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="trash-outline" size={14} color={FinTrackedColors.error} />
+                  </Pressable>
+                </View>
+              ))
+            )}
           </View>
         )}
 
@@ -85,17 +117,39 @@ export default function BudgetsScreen() {
               <Text variant="titleMedium" style={styles.sectionTitle}>
                 Financial Targets
               </Text>
-              <Text style={styles.sectionBadge}>{goals.length} Goals</Text>
+              <Button
+                mode="text"
+                onPress={() => setIsGoalModalOpen(true)}
+                icon={() => <Ionicons name="add" size={18} color={FinTrackedColors.primary} />}
+                labelStyle={styles.addBtnLabel}
+              >
+                Add Goal
+              </Button>
             </View>
 
-            {goals.map((g) => (
-              <GoalCard
-                key={g.id}
-                goal={g}
-                isPrivacyMode={isPrivacyMode}
-                onTopUp={handleTopUpGoal}
-              />
-            ))}
+            {goals.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Ionicons name="flag-outline" size={44} color={FinTrackedColors.textMuted} />
+                <Text style={styles.emptyText}>No financial goals set. Tap "+ Add Goal" above to create your first target!</Text>
+              </View>
+            ) : (
+              goals.map((g) => (
+                <View key={g.id} style={styles.cardWrapper}>
+                  <GoalCard
+                    goal={g}
+                    isPrivacyMode={isPrivacyMode}
+                    onTopUp={handleTopUpGoal}
+                  />
+                  <Pressable
+                    onPress={() => deleteGoal(g.id)}
+                    style={styles.deleteBadge}
+                    hitSlop={8}
+                  >
+                    <Ionicons name="trash-outline" size={14} color={FinTrackedColors.error} />
+                  </Pressable>
+                </View>
+              ))
+            )}
           </View>
         )}
 
@@ -121,17 +175,22 @@ export default function BudgetsScreen() {
               <Text variant="headlineMedium" style={styles.investValue}>
                 {formatRupee(investmentPortfolio.currentValue, isPrivacyMode)}
               </Text>
-
-              <View style={styles.roiRow}>
-                <Ionicons name="caret-up" size={16} color={FinTrackedColors.primary} />
-                <Text style={styles.roiText}>
-                  +₹{investmentPortfolio.currentValue - investmentPortfolio.investedAmount} (+24.4% ROI)
-                </Text>
-              </View>
             </View>
           </View>
         )}
       </ScrollView>
+
+      {/* Add Modals */}
+      <AddGoalModal
+        visible={isGoalModalOpen}
+        onClose={() => setIsGoalModalOpen(false)}
+        onAddGoal={(g) => addGoal(g)}
+      />
+      <AddBudgetModal
+        visible={isBudgetModalOpen}
+        onClose={() => setIsBudgetModalOpen(false)}
+        onAddBudget={(b) => addBudget(b)}
+      />
     </SafeAreaView>
   );
 }
@@ -142,6 +201,9 @@ const styles = StyleSheet.create({
     backgroundColor: FinTrackedColors.background,
   },
   header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
     paddingTop: 12,
     paddingBottom: 8,
@@ -149,6 +211,15 @@ const styles = StyleSheet.create({
   pageTitle: {
     color: FinTrackedColors.textPrimary,
     fontWeight: '800',
+  },
+  clearHeaderBtn: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  clearHeaderBtnText: {
+    color: FinTrackedColors.error,
+    fontSize: 12,
+    fontWeight: '700',
   },
   segmentWrapper: {
     paddingHorizontal: 20,
@@ -162,16 +233,47 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 10,
   },
   sectionTitle: {
     color: FinTrackedColors.textPrimary,
     fontWeight: '700',
   },
-  sectionBadge: {
+  addBtnLabel: {
+    color: FinTrackedColors.primary,
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  cardWrapper: {
+    position: 'relative',
+  },
+  deleteBadge: {
+    position: 'absolute',
+    top: 12,
+    right: 12,
+    backgroundColor: FinTrackedColors.error + '1F',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: FinTrackedColors.error + '40',
+  },
+  emptyState: {
+    backgroundColor: FinTrackedColors.surface,
+    borderRadius: 20,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: FinTrackedColors.surfaceBorder,
+    marginVertical: 10,
+  },
+  emptyText: {
     color: FinTrackedColors.textMuted,
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 13,
+    textAlign: 'center',
+    marginTop: 10,
   },
   investCard: {
     backgroundColor: FinTrackedColors.surface,
@@ -209,16 +311,5 @@ const styles = StyleSheet.create({
     color: FinTrackedColors.textPrimary,
     fontWeight: '800',
     marginVertical: 4,
-  },
-  roiRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 6,
-  },
-  roiText: {
-    color: FinTrackedColors.primary,
-    fontWeight: '700',
-    fontSize: 12,
-    marginLeft: 4,
   },
 });

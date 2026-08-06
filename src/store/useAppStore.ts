@@ -57,6 +57,14 @@ interface AppState {
   deleteTransaction: (id: string) => void;
   clearAllTransactions: () => void;
   resetAllDataToBlank: () => void;
+  
+  // Goals & Budgets Actions
+  addGoal: (goal: Goal) => void;
+  deleteGoal: (goalId: string) => void;
+  addBudget: (budget: Budget) => void;
+  deleteBudget: (budgetId: string) => void;
+  clearAllGoalsAndBudgets: () => void;
+  
   addCategory: (category: Category) => void;
   updateGoalAmount: (goalId: string, deltaAmount: number) => void;
   updateGoldHolding: (grams: number, ratePerGram: number) => void;
@@ -174,6 +182,8 @@ export const useAppStore = create<AppState>()(
       resetAllDataToBlank: () => {
         set({
           transactions: [],
+          goals: [],
+          budgets: [],
           accounts: DEFAULT_ACCOUNTS.map((a) => ({ ...a, balance: 0 })),
           goldHolding: { grams: 0, ratePerGram: 7200, lastUpdated: 'Today' },
           investmentPortfolio: {
@@ -184,6 +194,26 @@ export const useAppStore = create<AppState>()(
             licValue: 0,
           },
         });
+      },
+
+      addGoal: (goal: Goal) => {
+        set((state) => ({ goals: [...state.goals, goal] }));
+      },
+
+      deleteGoal: (goalId: string) => {
+        set((state) => ({ goals: state.goals.filter((g) => g.id !== goalId) }));
+      },
+
+      addBudget: (budget: Budget) => {
+        set((state) => ({ budgets: [...state.budgets, budget] }));
+      },
+
+      deleteBudget: (budgetId: string) => {
+        set((state) => ({ budgets: state.budgets.filter((b) => b.id !== budgetId) }));
+      },
+
+      clearAllGoalsAndBudgets: () => {
+        set({ goals: [], budgets: [] });
       },
 
       addCategory: (category: Category) => {

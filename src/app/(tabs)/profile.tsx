@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, StyleSheet, ScrollView } from 'react-native';
 import { Text, Avatar, Surface, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -11,7 +11,7 @@ import { exportTransactionsToExcel, generatePDFReport } from '../../services/exp
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userName, accounts, transactions, isPrivacyMode, getSummary, clearAllTransactions, resetAllDataToBlank } =
+  const { userName, accounts, transactions, isPrivacyMode, getSummary, resetAllDataToBlank } =
     useAppStore();
 
   const summary = getSummary();
@@ -25,8 +25,8 @@ export default function ProfileScreen() {
   };
 
   const handleClearSampleData = () => {
-    clearAllTransactions();
-    alert('All sample transactions have been cleared! You can now manually add your real transactions or import spending.xlsx.');
+    resetAllDataToBlank();
+    alert('All sample transactions, goals, and budgets have been cleared! You now have a 100% clean slate to manually enter or import your data.');
   };
 
   return (
@@ -96,7 +96,7 @@ export default function ProfileScreen() {
             style={styles.clearBtn}
             labelStyle={styles.clearBtnLabel}
           >
-            Clear Sample Data & Start Fresh
+            Clear All App Data & Start Fresh
           </Button>
         </Surface>
 
