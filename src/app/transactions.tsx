@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, FlatList, Pressable } from 'react-native';
-import { Text, TextInput, Searchbar } from 'react-native-paper';
+import { Text, Searchbar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,12 +8,14 @@ import FinTrackedColors from '../constants/Colors';
 import { useAppStore } from '../store/useAppStore';
 import { formatRupee } from '../utils/formatters';
 import { Transaction } from '../types';
+import { FilterModal } from '../components/transactions/FilterModal';
 
 export default function TransactionsScreen() {
   const router = useRouter();
   const { transactions, isPrivacyMode, deleteTransaction } = useAppStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedFilter, setSelectedFilter] = useState<'ALL' | 'INCOME' | 'EXPENSE'>('ALL');
+  const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
 
   const filteredTransactions = transactions.filter((item) => {
     const matchesFilter = selectedFilter === 'ALL' || item.type === selectedFilter;
@@ -90,7 +92,9 @@ export default function TransactionsScreen() {
         <Text variant="titleMedium" style={styles.headerTitle}>
           Transaction History
         </Text>
-        <View style={{ width: 24 }} />
+        <Pressable onPress={() => setIsFilterModalOpen(true)} style={styles.filterBtn} hitSlop={12}>
+          <Ionicons name="options-outline" size={22} color={FinTrackedColors.primary} />
+        </Pressable>
       </View>
 
       {/* Search Input */}
@@ -143,6 +147,17 @@ export default function TransactionsScreen() {
           </View>
         }
       />
+
+      {/* Filter Modal */}
+      <FilterModal
+        visible={isFilterModalOpen}
+        onClose={() => setIsFilterModalOpen(false)}
+        onApply={(f) => {
+          if (f.type !== 'ALL') {
+            setSelectedFilter(f.type as any);
+          }
+        }}
+      />
     </SafeAreaView>
   );
 }
@@ -167,6 +182,9 @@ const styles = StyleSheet.create({
   headerTitle: {
     color: FinTrackedColors.textPrimary,
     fontWeight: '700',
+  },
+  filterBtn: {
+    padding: 4,
   },
   searchWrapper: {
     paddingHorizontal: 20,

@@ -1,18 +1,27 @@
 import React from 'react';
 import { View, StyleSheet, ScrollView, Pressable } from 'react-native';
-import { Text, Avatar, Surface } from 'react-native-paper';
+import { Text, Avatar, Surface, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import FinTrackedColors from '../../constants/Colors';
 import { useAppStore } from '../../store/useAppStore';
 import { formatRupee } from '../../utils/formatters';
+import { exportTransactionsToExcel, generatePDFReport } from '../../services/exportService';
 
 export default function ProfileScreen() {
   const router = useRouter();
-  const { userName, accounts, isPrivacyMode, getSummary } = useAppStore();
+  const { userName, accounts, transactions, isPrivacyMode, getSummary } = useAppStore();
 
   const summary = getSummary();
+
+  const handleExportExcel = async () => {
+    await exportTransactionsToExcel(transactions);
+  };
+
+  const handleExportPDF = async () => {
+    await generatePDFReport(userName, summary, transactions);
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
@@ -38,23 +47,31 @@ export default function ProfileScreen() {
           </View>
         </Surface>
 
-        {/* Excel Import Shortcut Card */}
-        <Pressable onPress={() => router.push('/import-excel')}>
-          <Surface style={styles.importBannerCard} elevation={0}>
-            <View style={styles.importIconBg}>
-              <Ionicons name="document-text" size={24} color={FinTrackedColors.primary} />
-            </View>
-            <View style={styles.importMeta}>
-              <Text variant="titleMedium" style={styles.importTitle}>
-                Import spending.xlsx
-              </Text>
-              <Text style={styles.importSub}>
-                Upload lifetime earnings & expenses from Excel
-              </Text>
-            </View>
-            <Ionicons name="chevron-forward" size={20} color={FinTrackedColors.textSecondary} />
-          </Surface>
-        </Pressable>
+        {/* Export & Data Actions */}
+        <Text style={styles.sectionHeader}>Data Export & Statements</Text>
+        <Surface style={styles.exportCard} elevation={0}>
+          <Button
+            mode="contained"
+            onPress={handleExportPDF}
+            icon={() => <Ionicons name="document-text-outline" size={18} color="#FFFFFF" />}
+            style={styles.pdfBtn}
+            contentStyle={styles.btnContent}
+            labelStyle={styles.btnLabel}
+          >
+            Download PDF Statement
+          </Button>
+
+          <Button
+            mode="outlined"
+            onPress={handleExportExcel}
+            icon={() => <Ionicons name="download-outline" size={18} color={FinTrackedColors.primary} />}
+            style={styles.excelBtn}
+            contentStyle={styles.btnContent}
+            labelStyle={styles.excelBtnLabel}
+          >
+            Export All to Excel (.xlsx)
+          </Button>
+        </Surface>
 
         {/* Bank & Credit Accounts Breakdown */}
         <Text style={styles.sectionHeader}>Accounts & Wallets ({accounts.length})</Text>
@@ -167,37 +184,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 2,
   },
-  importBannerCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: FinTrackedColors.primary + '1F',
-    borderRadius: 18,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: FinTrackedColors.primary + '40',
-    marginBottom: 20,
-  },
-  importIconBg: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
-    backgroundColor: FinTrackedColors.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  importMeta: {
-    flex: 1,
-  },
-  importTitle: {
-    color: FinTrackedColors.textPrimary,
-    fontWeight: '700',
-  },
-  importSub: {
-    color: FinTrackedColors.textSecondary,
-    fontSize: 11,
-    marginTop: 2,
-  },
   sectionHeader: {
     color: FinTrackedColors.textSecondary,
     fontSize: 12,
@@ -206,6 +192,37 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 10,
     marginTop: 6,
+  },
+  exportCard: {
+    backgroundColor: FinTrackedColors.surface,
+    borderRadius: 20,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: FinTrackedColors.surfaceBorder,
+    marginBottom: 20,
+  },
+  pdfBtn: {
+    backgroundColor: FinTrackedColors.primary,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  excelBtn: {
+    borderColor: FinTrackedColors.primary,
+    borderRadius: 14,
+    borderWidth: 1,
+  },
+  btnContent: {
+    height: 46,
+  },
+  btnLabel: {
+    color: '#FFFFFF',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  excelBtnLabel: {
+    color: FinTrackedColors.primary,
+    fontWeight: '700',
+    fontSize: 13,
   },
   accountsCard: {
     backgroundColor: FinTrackedColors.surface,
