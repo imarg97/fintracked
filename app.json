@@ -3,6 +3,7 @@
     "name": "FinTracked",
     "slug": "fintracked",
     "version": "1.0.0",
+    "owner": "im_arg",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "fintracked",
@@ -29,6 +30,14 @@
     },
     "plugins": [
       "expo-router"
-    ]
+    ],
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "8b8e5b2c-5b7a-4c1d-98e8-1b2e5353035f"
+      }
+    }
   }
 }
