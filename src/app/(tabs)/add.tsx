@@ -1,24 +1,38 @@
 import React from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, Pressable } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import FinTrackedColors from '../../constants/Colors';
+import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import FinTrackedColors from '../../constants/Colors';
+import { AddTransactionForm } from '../../components/transactions/AddTransactionForm';
 
 export default function AddTransactionScreen() {
+  const router = useRouter();
+
+  const handleSuccess = () => {
+    // Navigate back to Home Dashboard on save
+    router.replace('/(tabs)');
+  };
+
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.centerContent}>
-        <View style={styles.iconCircle}>
-          <Ionicons name="add-circle" size={44} color={FinTrackedColors.primary} />
-        </View>
-        <Text variant="headlineSmall" style={styles.title}>
-          Add Transaction
+    <SafeAreaView style={styles.container} edges={['top']}>
+      {/* Header Bar */}
+      <View style={styles.header}>
+        <Text variant="titleMedium" style={styles.headerTitle}>
+          New Transaction
         </Text>
-        <Text style={styles.subtitle}>
-          Quick expense and income entry forms with auto-categorization will open here in Phase 2.
-        </Text>
+        <Pressable
+          onPress={() => router.replace('/(tabs)')}
+          style={({ pressed }) => [styles.closeBtn, pressed && { opacity: 0.6 }]}
+          hitSlop={12}
+        >
+          <Ionicons name="close" size={24} color={FinTrackedColors.textSecondary} />
+        </Pressable>
       </View>
+
+      {/* Form Body */}
+      <AddTransactionForm onSuccess={handleSuccess} />
     </SafeAreaView>
   );
 }
@@ -27,35 +41,21 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: FinTrackedColors.background,
-    justifyContent: 'center',
-    paddingHorizontal: 24,
   },
-  centerContent: {
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: FinTrackedColors.surface,
-    padding: 32,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: FinTrackedColors.surfaceBorder,
+    paddingHorizontal: 20,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: FinTrackedColors.surfaceBorder + '80',
   },
-  iconCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: FinTrackedColors.primary + '1A',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  title: {
+  headerTitle: {
     color: FinTrackedColors.textPrimary,
     fontWeight: '700',
-    marginBottom: 8,
   },
-  subtitle: {
-    color: FinTrackedColors.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-    fontSize: 13,
+  closeBtn: {
+    padding: 4,
   },
 });

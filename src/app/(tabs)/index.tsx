@@ -2,67 +2,29 @@ import React from 'react';
 import { View, StyleSheet, ScrollView, RefreshControl } from 'react-native';
 import { Text, Avatar } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import FinTrackedColors from '../../constants/Colors';
 import { useAppStore } from '../../store/useAppStore';
 import { NetWorthCard } from '../../components/dashboard/NetWorthCard';
 import { MetricCard } from '../../components/common/MetricCard';
 import { RecentTransactionsCard } from '../../components/dashboard/RecentTransactionsCard';
-import { Transaction } from '../../types';
-import { calculateSavingsRate } from '../../utils/formatters';
-
-// Mock data for initial milestone preview
-const MOCK_SUMMARY = {
-  netWorth: 1845200,
-  monthlyIncome: 155000,
-  monthlyExpenses: 62400,
-};
-
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: 'tx-1',
-    title: 'Salary Credit',
-    category: 'Income',
-    amount: 155000,
-    type: 'INCOME',
-    date: 'Today, 09:30 AM',
-    accountName: 'HDFC Bank ****4120',
-    iconName: 'cash',
-  },
-  {
-    id: 'tx-2',
-    title: 'Apple Store Online',
-    category: 'Gadgets & Tech',
-    amount: 28900,
-    type: 'EXPENSE',
-    date: 'Yesterday',
-    accountName: 'ICICI Credit Card',
-    iconName: 'laptop-outline',
-  },
-  {
-    id: 'tx-3',
-    title: 'Fuel - HP Petrol Pump',
-    category: 'Transport',
-    amount: 3500,
-    type: 'EXPENSE',
-    date: '04 Aug 2026',
-    accountName: 'SBI Debit Card',
-    iconName: 'car-outline',
-  },
-];
 
 export default function HomeScreen() {
-  const { isPrivacyMode, togglePrivacyMode, userName } = useAppStore();
+  const router = useRouter();
+  const { isPrivacyMode, togglePrivacyMode, userName, transactions, getSummary } =
+    useAppStore();
   const [refreshing, setRefreshing] = React.useState(false);
 
-  const savingsRate = calculateSavingsRate(
-    MOCK_SUMMARY.monthlyIncome,
-    MOCK_SUMMARY.monthlyExpenses
-  );
+  const summary = getSummary();
 
   const onRefresh = React.useCallback(() => {
     setRefreshing(true);
     setTimeout(() => setRefreshing(false), 800);
   }, []);
+
+  const handleSeeAll = () => {
+    router.push('/transactions');
+  };
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -95,7 +57,7 @@ export default function HomeScreen() {
 
         {/* Hero Net Worth Card */}
         <NetWorthCard
-          netWorth={MOCK_SUMMARY.netWorth}
+          netWorth={summary.netWorth}
           isPrivacyMode={isPrivacyMode}
           onTogglePrivacy={togglePrivacyMode}
         />
@@ -104,21 +66,21 @@ export default function HomeScreen() {
         <View style={styles.metricsGrid}>
           <MetricCard
             label="Income"
-            amount={MOCK_SUMMARY.monthlyIncome}
+            amount={summary.monthlyIncome}
             type="INCOME"
             isPrivacy={isPrivacyMode}
           />
           <View style={styles.gridSpacer} />
           <MetricCard
             label="Expenses"
-            amount={MOCK_SUMMARY.monthlyExpenses}
+            amount={summary.monthlyExpenses}
             type="EXPENSE"
             isPrivacy={isPrivacyMode}
           />
           <View style={styles.gridSpacer} />
           <MetricCard
             label="Savings Rate"
-            percentage={savingsRate}
+            percentage={summary.savingsRate}
             type="SAVINGS"
             isPrivacy={isPrivacyMode}
           />
@@ -126,8 +88,9 @@ export default function HomeScreen() {
 
         {/* Recent Transactions Section */}
         <RecentTransactionsCard
-          transactions={MOCK_TRANSACTIONS}
+          transactions={transactions.slice(0, 5)}
           isPrivacyMode={isPrivacyMode}
+          onViewAll={handleSeeAll}
         />
       </ScrollView>
     </SafeAreaView>
