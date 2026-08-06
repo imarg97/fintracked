@@ -15,10 +15,10 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "com.im_arg.fintracked"
+      "bundleIdentifier": "com.imarg.fintracked"
     },
     "android": {
-      "package": "com.im_arg.fintracked",
+      "package": "com.imarg.fintracked",
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#0B0E14"
